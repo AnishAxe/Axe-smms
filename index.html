@@ -6,7 +6,6 @@
     <title>AXE | Premium SMM</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Outfit:wght@700;900&display=swap" rel="stylesheet">
     <style>
         :root { --primary: #8b5cf6; --bg: #03000a; --glass: rgba(255, 255, 255, 0.03); }
@@ -16,26 +15,34 @@
         .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; z-index: 999; backdrop-filter: blur(4px); }
         .glass-card { background: var(--glass); border: 1px solid rgba(255, 255, 255, 0.08); transition: all 0.3s ease; }
         .purple-input { background: rgba(0,0,0,0.4); border: 1px solid rgba(139, 92, 246, 0.2); color: white; width: 100%; outline: none; }
-        .platform-pill { cursor: pointer; padding: 10px 24px; border-radius: 99px; font-weight: 700; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; font-size: 12px; }
+        .platform-pill { cursor: pointer; padding: 10px 24px; border-radius: 99px; font-weight: 700; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; font-size: 12px; display: flex; align-items: center; gap: 4px; }
         .platform-pill.active { background: var(--primary); border-color: transparent; }
         .hidden { display: none !important; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .status-box { padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+        .status-pending { border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+        .status-complete, .status-success { border: 1px solid #10b981; background: rgba(16, 185, 129, 0.1); color: #10b981; }
+        .promo-text { color: #ff0000; font-size: 11px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; display: block; }
+        .red-off { color: #ff0000; font-weight: 900; }
         
-        /* Status Color Fixes */
-        .status-pending { border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.1); color: #f59e0b; padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 900; }
-        .status-success, .status-complete { border: 1px solid #10b981 !important; background: rgba(16, 185, 129, 0.1) !important; color: #10b981 !important; padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 900; }
-        
-        #balance-error { display: none; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; padding: 12px; border-radius: 12px; font-weight: 800; text-align: center; font-size: 12px; text-transform: uppercase; margin-bottom: 10px; }
+        /* Loading Spinner */
+        #loading-screen { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+        .spinner { width: 40px; height: 40px; border: 4px solid rgba(139, 92, 246, 0.1); border-top: 4px solid #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .error-msg { color: #ff4444; font-size: 12px; font-weight: 800; text-align: center; margin-top: 10px; display: none; }
     </style>
 </head>
-<body class="min-h-screen">
+<body class="min-h-screen flex flex-col">
+
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p class="text-xs font-black uppercase mt-4 tracking-widest text-purple-400">Processing...</p>
+    </div>
 
     <div id="overlay" class="overlay" onclick="toggleMenu()"></div>
 
     <nav class="p-5 flex justify-between items-center sticky top-0 z-[100] bg-black/80 backdrop-blur-lg border-b border-white/5">
         <div onclick="location.reload()" class="cursor-pointer flex items-center gap-3">
             <img src="IMG_2812.jpeg" alt="Logo" class="w-10 h-10 rounded-xl object-cover">
-            <span class="text-2xl font-black text-white italic uppercase tracking-tighter"></span>
         </div>
         <div class="flex items-center gap-4">
             <div class="bg-purple-500/10 border border-purple-500/20 px-4 py-2 rounded-xl flex flex-col items-end min-w-[100px]">
@@ -56,18 +63,18 @@
         <div class="space-y-6">
             <button onclick="showSection('sec-packages'); toggleMenu()" class="flex items-center gap-4 text-lg font-semibold w-full text-left"><i data-lucide="layout-grid"></i> Services</button>
             <button onclick="showSection('sec-dash'); toggleMenu()" class="flex items-center gap-4 text-lg font-semibold w-full text-left"><i data-lucide="layout-dashboard"></i> Dashboard</button>
-            <button onclick="showSection('sec-add-funds'); toggleMenu()" class="flex items-center gap-4 text-lg font-semibold w-full text-left text-green-400"><i data-lucide="plus-circle"></i> Add Points</button>
+            <button onclick="showSection('sec-add-funds'); toggleMenu()" class="flex items-center gap-4 text-lg font-semibold w-full text-left text-green-400"><i data-lucide="plus-circle"></i> Add Funds</button>
             <button onclick="showSection('sec-history'); toggleMenu()" class="flex items-center gap-4 text-lg font-semibold w-full text-left"><i data-lucide="history"></i> My History</button>
             <hr class="border-white/10">
             <button onclick="logout()" class="flex items-center gap-4 text-lg font-semibold text-red-400 w-full text-left"><i data-lucide="log-out"></i> Logout</button>
         </div>
     </div>
 
-    <main id="main-content" class="hidden container mx-auto p-6 max-w-6xl">
+    <main id="main-content" class="hidden container mx-auto p-6 max-w-6xl flex-grow">
         <section id="sec-packages" class="space-y-6">
             <div class="flex overflow-x-auto gap-3 pb-4 no-scrollbar">
                 <div class="platform-pill active" onclick="filterServices('insta', this)">Instagram</div>
-                <div class="platform-pill" onclick="filterServices('tt', this)">TikTok</div>
+                <div class="platform-pill" onclick="filterServices('tt', this)">TikTok <span class="red-off">(80% OFF)</span></div>
                 <div class="platform-pill" onclick="filterServices('fb', this)">Facebook</div>
                 <div class="platform-pill" onclick="filterServices('yt', this)">YouTube</div>
                 <div class="platform-pill" onclick="filterServices('x', this)">X (Twitter)</div>
@@ -90,17 +97,14 @@
         </section>
 
         <section id="sec-add-funds" class="hidden max-w-md mx-auto glass-card p-8 rounded-[2rem]">
-            <h2 class="text-2xl font-black text-center mb-6 uppercase">Top Up</h2>
-            <div class="bg-white p-4 rounded-3xl mb-6 flex justify-center mx-auto w-fit">
-                <img src="IMG_2749.jpeg" class="w-40 h-40 object-contain">
-            </div>
+            <h2 class="text-2xl font-black text-center mb-6 uppercase">Load Wallet</h2>
+            <div class="bg-white p-4 rounded-3xl mb-6 flex justify-center mx-auto w-fit"><img src="IMG_2749.jpeg" class="w-40 h-40 object-contain"></div>
             <div class="space-y-4">
-                <select id="fund-method" class="purple-input p-4 rounded-2xl bg-black">
-                    <option value="eSewa">eSewa</option>
-                    <option value="Web Point">Web Point</option>
-                </select>
+                <div id="fund-error" class="error-msg"></div>
                 <input type="number" id="fund-amount" placeholder="Amount (NPR)" class="purple-input p-4 rounded-2xl">
-                <input type="text" id="fund-txn-id" placeholder="Transaction ID" class="purple-input p-4 rounded-2xl">
+                <input type="text" id="fund-sender-name" placeholder="Sender Name" class="purple-input p-4 rounded-2xl">
+                <input type="number" id="fund-sender-num" placeholder="Sender Number" class="purple-input p-4 rounded-2xl">
+                <input type="text" id="fund-remark" placeholder="Remark" class="purple-input p-4 rounded-2xl">
                 <button onclick="submitFundRequest()" class="w-full bg-green-600 py-4 rounded-2xl font-black uppercase">Submit Deposit</button>
             </div>
         </section>
@@ -108,22 +112,24 @@
         <section id="sec-payment" class="hidden max-w-md mx-auto glass-card p-8 rounded-[2.5rem]">
             <h2 id="selected-pkg-name" class="text-xl font-black text-center mb-6 uppercase italic">Service Order</h2>
             <div class="space-y-4">
-                <div id="balance-error">INSUFFICIENT BALANCE! TOP UP FIRST.</div>
+                <div id="order-error" class="error-msg"></div>
                 <select id="order-pay-method" onchange="toggleOrderQR()" class="purple-input p-4 rounded-2xl bg-black">
-                    <option value="wallet">Wallet Points (Instant)</option>
-                    <option value="esewa">eSewa Scan (Manual)</option>
+                    <option value="wallet">Wallet Balance (Instant)</option>
+                    <option value="esewa">Direct eSewa (Manual)</option>
                 </select>
                 <div id="order-qr-box" class="hidden flex flex-col items-center bg-white p-4 rounded-2xl">
                     <img src="IMG_2749.jpeg" class="w-32 h-32">
-                    <p class="text-[10px] text-black font-bold mt-1 uppercase">Scan QR</p>
+                    <p class="text-[10px] text-black font-bold mt-1 uppercase">Scan to pay Rs</p>
                 </div>
                 <input type="number" id="order-amount" oninput="updatePrice()" placeholder="Quantity (Min 25)" class="purple-input p-4 rounded-2xl">
-                <input type="text" id="order-txn-id" placeholder="Transaction ID (eSewa Only)" class="hidden purple-input p-4 rounded-2xl border-green-500">
-                <div class="p-4 bg-white/5 rounded-2xl text-center">
-                    <p id="live-price" class="text-xl font-black text-white">0.00 Points</p>
-                </div>
-                <textarea id="txn-remark" placeholder="Profile Link / URL" class="purple-input p-4 rounded-2xl h-24"></textarea>
-                <button onclick="processOrder()" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase">Place Order</button>
+                <div class="p-4 bg-white/5 rounded-2xl text-center"><p id="live-price" class="text-xl font-black text-white">0.00 Rs</p></div>
+                
+                <input type="text" id="order-sender-name" placeholder="Sender Name" class="purple-input p-4 rounded-2xl">
+                <input type="number" id="order-sender-num" placeholder="Sender Number" class="purple-input p-4 rounded-2xl">
+                <input type="text" id="txn-remark" placeholder="Video / Profile Link" class="purple-input p-4 rounded-2xl">
+                <input type="text" id="order-remark-text" placeholder="Additional Remark" class="purple-input p-4 rounded-2xl">
+                
+                <button onclick="processOrder()" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase">Confirm & Pay</button>
             </div>
         </section>
 
@@ -137,6 +143,7 @@
         <div class="glass-card p-10 rounded-[3rem] text-center">
             <h2 id="auth-title" class="text-2xl font-black mb-8 italic uppercase">Axe SMM</h2>
             <div class="space-y-4">
+                <div id="auth-error" class="error-msg"></div>
                 <input type="email" id="email" placeholder="Email" class="purple-input p-4 rounded-2xl">
                 <input type="password" id="password" placeholder="Password" class="purple-input p-4 rounded-2xl">
                 <button onclick="handleAuthAction()" id="auth-btn" class="w-full bg-white text-black p-4 rounded-2xl font-black uppercase">Login</button>
@@ -144,261 +151,140 @@
             </div>
         </div>
     </div>
-    
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, updateDoc, getDoc, collection, addDoc, query, where, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, updateDoc, collection, addDoc, query, where, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDb_CJqakTJEVA52IYwz76egyVuINOXTmw",
-            authDomain: "anish-285df.firebaseapp.com",
-            projectId: "anish-285df",
-            storageBucket: "anish-285df.firebasestorage.app",
-            messagingSenderId: "40699037801",
-            appId: "1:40699037801:web:06c80740ddcd85555abaf8",
-            measurementId: "G-3LYP0WPVQ9"
-        };
-
+        const firebaseConfig = { apiKey: "AIzaSyDb_CJqakTJEVA52IYwz76egyVuINOXTmw", authDomain: "anish-285df.firebaseapp.com", projectId: "anish-285df", storageBucket: "anish-285df.firebasestorage.app", messagingSenderId: "40699037801", appId: "1:40699037801:web:06c80740ddcd85555abaf8" };
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-
         const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1476151951493431297/iCK9QM9DFVMCq6RW78vZJ55-iLN1adccCTTt9u36iWR3qtf2EJluLZoJ5wKkpCkZq5et";
 
         let userData = { points: 0 }, activePkg = null, isLoginMode = true;
 
         const allServices = {
-            insta: [ 
-                { name: "IG Followers", icon: "users" }, { name: "IG Likes", icon: "heart" }, 
-                { name: "IG Views", icon: "play" }, { name: "IG Share", icon: "send" }
-            ],
-            tt: [ 
-                { name: "TikTok Followers", icon: "user-plus" }, { name: "TikTok Likes", icon: "heart" }, 
-                { name: "TikTok Views", icon: "zap" }
-            ],
-            fb: [ 
-                { name: "FB Page Followers", icon: "user-check" }, { name: "FB Post Likes", icon: "thumbs-up" }
-            ],
-            yt: [ { name: "YT Subs", icon: "youtube" }, { name: "YT Views", icon: "play-circle" } ],
-            x: [
-                { name: "X Followers", icon: "twitter" }, { name: "X Retweets", icon: "repeat" },
-                { name: "X Likes", icon: "heart" }, { name: "X Views", icon: "eye" }
-            ],
-            spotify: [
-                { name: "Spotify Plays", icon: "music" }, { name: "Spotify Followers", icon: "user-plus" },
-                { name: "Spotify Playlist Saves", icon: "bookmark" }
-            ]
+            insta: [{ name: "IG Followers", icon: "users" }, { name: "IG Likes", icon: "heart" }, { name: "IG Views", icon: "play" }],
+            tt: [{ name: "TikTok Followers", icon: "user-plus" }, { name: "TikTok Likes", icon: "heart" }, { name: "TikTok Views", icon: "zap" }, { name: "TikTok Repost", icon: "repeat" }, { name: "TikTok Favorites", icon: "star" }],
+            fb: [{ name: "FB Page Followers", icon: "user-check" }, { name: "FB Post Likes", icon: "thumbs-up" }],
+            yt: [{ name: "YT Subs", icon: "youtube" }, { name: "YT Views", icon: "play-circle" }],
+            x: [{ name: "X Followers", icon: "twitter" }, { name: "X Retweets", icon: "repeat" }],
+            spotify: [{ name: "Spotify Plays", icon: "music" }]
         };
 
-        window.toggleAuthMode = () => { 
-            isLoginMode = !isLoginMode; 
-            document.getElementById('auth-title').innerText = isLoginMode ? "AXE LOGIN" : "AXE REGISTER"; 
-            document.getElementById('auth-btn').innerText = isLoginMode ? "Login" : "Register"; 
-        };
+        const setLoading = (show) => document.getElementById('loading-screen').style.display = show ? 'flex' : 'none';
+        const showError = (id, msg) => { const el = document.getElementById(id); el.innerText = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 5000); };
 
+        window.toggleAuthMode = () => { isLoginMode = !isLoginMode; document.getElementById('auth-title').innerText = isLoginMode ? "AXE LOGIN" : "AXE REGISTER"; document.getElementById('auth-btn').innerText = isLoginMode ? "Login" : "Register"; };
+        
         window.handleAuthAction = async () => {
-            const email = document.getElementById('email').value, pass = document.getElementById('password').value;
+            const e = document.getElementById('email').value, p = document.getElementById('password').value;
+            if(!e || !p) return showError('auth-error', "Fill Email and Password");
+            setLoading(true);
             try { 
-                if (isLoginMode) await signInWithEmailAndPassword(auth, email, pass);
-                else {
-                    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-                    await setDoc(doc(db, "users", cred.user.uid), { points: 0, email: email });
-                }
-            } catch (e) { alert(e.message); }
+                if (isLoginMode) await signInWithEmailAndPassword(auth, e, p); 
+                else { 
+                    const c = await createUserWithEmailAndPassword(auth, e, p); 
+                    await setDoc(doc(db, "users", c.user.uid), { points: 0, email: e }); 
+                } 
+            } catch (err) { showError('auth-error', err.message); }
+            setLoading(false);
         };
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                document.getElementById('sec-auth').classList.add('hidden');
-                document.getElementById('main-content').classList.remove('hidden');
-                syncData(user.uid);
+        onAuthStateChanged(auth, (u) => { 
+            if (u) { 
+                document.getElementById('sec-auth').classList.add('hidden'); 
+                document.getElementById('main-content').classList.remove('hidden'); 
+                syncData(u.uid); 
                 showSection('sec-packages'); 
-            } else {
-                document.getElementById('sec-auth').classList.remove('hidden');
-                document.getElementById('main-content').classList.add('hidden');
-            }
+            } else { 
+                document.getElementById('sec-auth').classList.remove('hidden'); 
+                document.getElementById('main-content').classList.add('hidden'); 
+            } 
         });
 
         function syncData(uid) {
-            onSnapshot(doc(db, "users", uid), (snap) => {
-                if (snap.exists()) {
-                    userData = snap.data();
-                    document.getElementById('global-points').innerText = parseFloat(userData.points || 0).toFixed(2);
-                }
-            });
-
-            onSnapshot(collection(db, "fund_requests"), (snapshot) => {
-                snapshot.docChanges().forEach(async (change) => {
-                    if (change.type === "modified") {
-                        const data = change.doc.data();
-                        if ((data.status === "Success" || data.status === "Complete") && data.userId === uid && !data.processed) {
-                            const userRef = doc(db, "users", uid);
-                            const userSnap = await getDoc(userRef);
-                            const newTotal = (parseFloat(userSnap.data().points) || 0) + parseFloat(data.amount);
-                            await updateDoc(userRef, { points: newTotal });
-                            await updateDoc(doc(db, "fund_requests", change.doc.id), { processed: true });
-                        }
-                    }
-                });
-            });
-
-            onSnapshot(query(collection(db, "orders"), where("userId", "==", uid)), (snap) => {
-                let spent = 0;
-                snap.forEach(doc => { if(doc.data().method === 'wallet') spent += (doc.data().price || 0); });
-                document.getElementById('stat-orders').innerText = snap.size;
-                document.getElementById('stat-spent').innerText = spent.toFixed(1);
+            onSnapshot(doc(db, "users", uid), (s) => { if (s.exists()) { userData = s.data(); document.getElementById('global-points').innerText = parseFloat(userData.points || 0).toFixed(2); } });
+            onSnapshot(query(collection(db, "orders"), where("userId", "==", uid)), (s) => {
+                let spent = 0; s.forEach(d => { if(d.data().method === 'wallet') spent += (d.data().price || 0); });
+                document.getElementById('stat-orders').innerText = s.size; document.getElementById('stat-spent').innerText = spent.toFixed(1);
                 renderHistory(uid);
             });
-            onSnapshot(query(collection(db, "fund_requests"), where("userId", "==", uid)), () => renderHistory(uid));
         }
 
         async function renderHistory(uid) {
             const list = document.getElementById('combined-history');
             onSnapshot(query(collection(db, "orders"), where("userId", "==", uid)), (s1) => {
                 onSnapshot(query(collection(db, "fund_requests"), where("userId", "==", uid)), (s2) => {
-                    let items = [];
-                    s1.forEach(doc => items.push({ ...doc.data(), type: 'ORDER' }));
-                    s2.forEach(doc => items.push({ ...doc.data(), type: 'FUND' }));
+                    let items = []; s1.forEach(d => items.push({ ...d.data(), type: 'ORDER' })); s2.forEach(d => items.push({ ...d.data(), type: 'FUND' }));
                     items.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-                    
                     list.innerHTML = items.map(item => {
-                        const isDone = item.status === 'Success' || item.status === 'Complete';
-                        const boxColor = isDone ? 'border-emerald-500' : 'border-amber-500';
-                        const labelStyle = isDone ? 'status-success' : 'status-pending';
-
-                        return `<div class="glass-card p-4 rounded-2xl flex justify-between items-center border-l-4 ${boxColor}">
-                            <div>
-                                <p class="font-bold text-xs uppercase italic">${item.type === 'ORDER' ? item.packageName : 'Deposit'}</p>
-                                <p class="text-[8px] opacity-60 uppercase">${item.createdAt?.toDate().toLocaleString() || 'Syncing...'}</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="font-black text-sm">${item.type === 'ORDER' ? '-' : '+'}${item.price || item.amount} Pts</p>
-                                <span class="${labelStyle}">${item.status}</span>
-                            </div>
+                        const s = (item.status || "Pending").toLowerCase();
+                        const stClass = (s === 'complete' || s === 'success') ? 'status-complete' : 'status-pending';
+                        return `<div class="glass-card p-4 rounded-2xl flex justify-between items-center border-l-4 ${stClass === 'status-complete' ? 'border-emerald-500' : 'border-amber-500'}">
+                            <div><p class="font-bold text-xs uppercase italic">${item.packageName || 'Deposit'}</p></div>
+                            <div class="text-right"><p class="font-black text-sm">${item.price || item.amount} Rs</p><span class="status-box ${stClass}">${item.status}</span></div>
                         </div>`;
                     }).join('');
                 });
             });
         }
 
-        window.submitFundRequest = async () => {
-            const amt = parseFloat(document.getElementById('fund-amount').value), tid = document.getElementById('fund-txn-id').value, method = document.getElementById('fund-method').value;
-            if(!amt || !tid) return alert("Fill all fields");
-            
-            await addDoc(collection(db, "fund_requests"), { 
-                userId: auth.currentUser.uid, userEmail: auth.currentUser.email,
-                amount: amt, transactionId: tid, status: "Pending", processed: false, createdAt: serverTimestamp() 
-            });
-
-            // DISCORD DEPOSIT ALERT
-            fetch(DISCORD_WEBHOOK, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    "content": "💰 **New Deposit Request!**",
-                    "embeds": [{
-                        "title": "Axe SMM Fund Load",
-                        "color": 3066993,
-                        "fields": [
-                            { "name": "User", "value": auth.currentUser.email, "inline": true },
-                            { "name": "Amount", "value": amt + " NPR", "inline": true },
-                            { "name": "Method", "value": method, "inline": true },
-                            { "name": "TXN ID", "value": tid }
-                        ],
-                        "timestamp": new Date()
-                    }]
-                })
-            });
-
-            window.open(`https://wa.me/9806167776?text=Deposit:${amt}%20TXN:${tid}%20Email:${auth.currentUser.email}`);
-            showSection('sec-history');
-        };
-
         window.processOrder = async () => {
-            const errDiv = document.getElementById('balance-error');
-            const qty = parseInt(document.getElementById('order-amount').value), m = document.getElementById('order-pay-method').value, price = qty * 0.5;
-            const remark = document.getElementById('txn-remark').value;
+            const qty = parseInt(document.getElementById('order-amount').value), link = document.getElementById('txn-remark').value, sN = document.getElementById('order-sender-name').value, sNum = document.getElementById('order-sender-num').value, r = document.getElementById('order-remark-text').value;
+            const isDiscounted = activePkg?.includes("TikTok") && (activePkg.includes("Views") || activePkg.includes("Repost") || activePkg.includes("Favorites"));
+            const p = qty * (isDiscounted ? 0.1 : 0.5);
+            if (!qty || !link || !sN || !sNum) return showError('order-error', "Fill All Required Fields!");
+            if (document.getElementById('order-pay-method').value === 'wallet' && userData.points < p) return showError('order-error', "Insufficient Wallet Balance!");
             
-            errDiv.style.display = "none";
-            if (!qty || qty < 25) return alert("Min 25");
-
-            if (m === 'wallet' && userData.points < price) {
-                errDiv.style.display = "block";
-                return;
-            }
-
-            if (m === 'wallet') await updateDoc(doc(db, "users", auth.currentUser.uid), { points: userData.points - price });
-            
-            await addDoc(collection(db, "orders"), { 
-                userId: auth.currentUser.uid, packageName: activePkg, price: price, 
-                quantity: qty, method: m, status: "Pending", 
-                createdAt: serverTimestamp(), remark: remark 
-            });
-
-            fetch(DISCORD_WEBHOOK, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    "content": "🚀 **New Order Alert!**",
-                    "embeds": [{
-                        "title": "Axe SMM Order",
-                        "color": 9109746,
-                        "fields": [
-                            { "name": "User", "value": auth.currentUser.email, "inline": true },
-                            { "name": "Service", "value": activePkg, "inline": true },
-                            { "name": "Quantity", "value": qty.toString(), "inline": true },
-                            { "name": "Total Cost", "value": price + " Pts", "inline": true },
-                            { "name": "Link/URL", "value": remark || "N/A" }
-                        ],
-                        "timestamp": new Date()
-                    }]
-                })
-            });
-            
-            alert("Order Placed Successfully!"); 
-            showSection('sec-history');
+            setLoading(true);
+            try {
+                if (document.getElementById('order-pay-method').value === 'wallet') await updateDoc(doc(db, "users", auth.currentUser.uid), { points: userData.points - p });
+                await addDoc(collection(db, "orders"), { userId: auth.currentUser.uid, packageName: activePkg, price: p, quantity: qty, method: document.getElementById('order-pay-method').value, status: "Pending", createdAt: serverTimestamp(), remark: link, senderName: sN, senderNum: sNum });
+                await fetch(DISCORD_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ "content": `🚀 **ORDER**\nuser: ${auth.currentUser.email}\npackage: ${activePkg}\nlink: ${link}\nremark: ${r || "N/A"}\namount: ${p} Rs\nsender name: ${sN}\nsender number: ${sNum}` }) });
+                alert("Order Placed!"); showSection('sec-history');
+            } catch (e) { showError('order-error', e.message); }
+            setLoading(false);
         };
 
-        window.showSection = (id) => {
-            ['sec-dash', 'sec-packages', 'sec-payment', 'sec-history', 'sec-add-funds'].forEach(s => document.getElementById(s).classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-            if (id === 'sec-packages') filterServices('insta', document.querySelector('.platform-pill'));
+        window.submitFundRequest = async () => {
+            const amt = document.getElementById('fund-amount').value, sN = document.getElementById('fund-sender-name').value, sM = document.getElementById('fund-sender-num').value, r = document.getElementById('fund-remark').value;
+            if(!amt || !sN || !sM) return showError('fund-error', "Fill All Fields");
+            setLoading(true);
+            try {
+                await addDoc(collection(db, "fund_requests"), { userId: auth.currentUser.uid, userEmail: auth.currentUser.email, amount: amt, senderName: sN, senderNum: sM, remark: r, status: "Pending", createdAt: serverTimestamp() });
+                await fetch(DISCORD_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ "content": `💰 **DEPOSIT**\nuser: ${auth.currentUser.email}\namount: ${amt} Rs\nsender name: ${sN}\nsender number: ${sM}\nremark: ${r || "N/A"}` }) });
+                window.open(`https://wa.me/9806167776?text=Deposit:${amt}%20Name:${sN}`);
+                showSection('sec-history');
+            } catch (e) { showError('fund-error', e.message); }
+            setLoading(false);
         };
 
+        window.showSection = (id) => { ['sec-dash', 'sec-packages', 'sec-payment', 'sec-history', 'sec-add-funds'].forEach(s => document.getElementById(s).classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); };
         window.filterServices = (platform, el) => {
-            document.querySelectorAll('.platform-pill').forEach(t => t.classList.remove('active'));
-            el.classList.add('active');
-            const grid = document.getElementById('services-grid');
-            grid.innerHTML = "";
+            document.querySelectorAll('.platform-pill').forEach(t => t.classList.remove('active')); el.classList.add('active');
+            const grid = document.getElementById('services-grid'); grid.innerHTML = "";
             allServices[platform].forEach(s => {
-                grid.innerHTML += `<div onclick="openOrder('${s.name}')" class="glass-card p-5 rounded-3xl cursor-pointer hover:border-purple-500/50">
+                const isPromo = platform === 'tt' && (s.name.includes("Views") || s.name.includes("Repost") || s.name.includes("Favorites"));
+                grid.innerHTML += `<div onclick="openOrder('${s.name}')" class="glass-card p-5 rounded-3xl cursor-pointer hover:border-purple-500">
+                    ${isPromo ? '<span class="promo-text">** 80% DISCOUNT **</span>' : ''}
                     <i data-lucide="${s.icon}" class="text-purple-400 mb-2 w-5 h-5"></i>
-                    <h3 class="font-bold text-white text-[10px] uppercase leading-tight">${s.name}</h3>
+                    <h3 class="font-black text-white text-[10px] uppercase">${s.name}</h3>
                 </div>`;
-            });
-            lucide.createIcons();
+            }); lucide.createIcons();
         };
-
-        window.toggleOrderQR = () => {
-            const m = document.getElementById('order-pay-method').value;
-            document.getElementById('order-qr-box').classList.toggle('hidden', m !== 'esewa');
-            document.getElementById('order-txn-id').classList.toggle('hidden', m !== 'esewa');
-        };
+        window.toggleOrderQR = () => { document.getElementById('order-qr-box').classList.toggle('hidden', document.getElementById('order-pay-method').value !== 'esewa'); };
         window.openOrder = (name) => { activePkg = name; document.getElementById('selected-pkg-name').innerText = name; showSection('sec-payment'); };
-        window.updatePrice = () => { document.getElementById('live-price').innerText = ((document.getElementById('order-amount').value || 0) * 0.5).toFixed(2) + " Points"; };
+        window.updatePrice = () => { 
+            const q = document.getElementById('order-amount').value || 0;
+            const d = activePkg?.includes("TikTok") && (activePkg.includes("Views") || activePkg.includes("Repost") || activePkg.includes("Favorites"));
+            document.getElementById('live-price').innerText = (q * (d ? 0.1 : 0.5)).toFixed(2) + " Rs"; 
+        };
         window.toggleMenu = () => { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').style.display = document.getElementById('overlay').style.display === 'block' ? 'none' : 'block'; };
         window.logout = () => signOut(auth);
         lucide.createIcons();
     </script>
-    <footer class="mt-auto py-6 border-t border-white/5 text-center">
-    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-600">
-        © 2026 AXE SMM — All Rights Reserved.
-    </p>
-</footer>
-
-<script type="module">
-    // ... (Keep all your existing Firebase and function code exactly as is)
 </body>
 </html>
