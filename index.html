@@ -23,7 +23,8 @@
         .status-complete, .status-success { border: 1px solid #10b981; background: rgba(16, 185, 129, 0.1); color: #10b981; }
         .promo-text { color: #ff0000; font-size: 11px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; display: block; }
         .red-off { color: #ff0000; font-weight: 900; }
-        
+        .rate-tag { font-size: 9px; color: #a78bfa; font-weight: 700; margin-top: 4px; display: block; }
+
         /* Loading Spinner */
         #loading-screen { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
         .spinner { width: 40px; height: 40px; border: 4px solid rgba(139, 92, 246, 0.1); border-top: 4px solid #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; }
@@ -74,7 +75,7 @@
         <section id="sec-packages" class="space-y-6">
             <div class="flex overflow-x-auto gap-3 pb-4 no-scrollbar">
                 <div class="platform-pill active" onclick="filterServices('insta', this)">Instagram</div>
-                <div class="platform-pill" onclick="filterServices('tt', this)">TikTok <span class="red-off">(80% OFF)</span></div>
+                <div class="platform-pill" onclick="filterServices('tt', this)">TikTok</div>
                 <div class="platform-pill" onclick="filterServices('fb', this)">Facebook</div>
                 <div class="platform-pill" onclick="filterServices('yt', this)">YouTube</div>
                 <div class="platform-pill" onclick="filterServices('x', this)">X (Twitter)</div>
@@ -123,12 +124,12 @@
                 </div>
                 <input type="number" id="order-amount" oninput="updatePrice()" placeholder="Quantity (Min 25)" class="purple-input p-4 rounded-2xl">
                 <div class="p-4 bg-white/5 rounded-2xl text-center"><p id="live-price" class="text-xl font-black text-white">0.00 Rs</p></div>
-                
+
                 <input type="text" id="order-sender-name" placeholder="Sender Name" class="purple-input p-4 rounded-2xl">
                 <input type="number" id="order-sender-num" placeholder="Sender Number" class="purple-input p-4 rounded-2xl">
                 <input type="text" id="txn-remark" placeholder="Video / Profile Link" class="purple-input p-4 rounded-2xl">
                 <input type="text" id="order-remark-text" placeholder="Additional Remark" class="purple-input p-4 rounded-2xl">
-                
+
                 <button onclick="processOrder()" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase">Confirm & Pay</button>
             </div>
         </section>
@@ -152,10 +153,28 @@
         </div>
     </div>
 
+    <div id="promo-overlay" class="overlay" onclick="closePromo(false)"></div>
+    <div id="promo-modal" class="hidden" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:1500; width:80%; max-width:260px;">
+        <div class="glass-card p-5 rounded-2xl text-center relative" style="background:linear-gradient(160deg, rgba(139,92,246,0.15), rgba(10,5,20,0.98)); border:1px solid rgba(139,92,246,0.4);">
+            <button onclick="closePromo(false)" class="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-white/10">
+                <i data-lucide="x" class="w-3 h-3"></i>
+            </button>
+            <span id="promo-badge" class="inline-block bg-red-500 text-white text-[10px] font-black uppercase px-3 py-1 rounded-full mb-3">70% OFF</span>
+            <h2 class="text-sm font-black uppercase italic mb-1">Limited Time Offer</h2>
+            <p class="text-xs text-gray-300 mb-3">Followers (All Platforms)</p>
+            <div class="flex items-center justify-center gap-2 mb-4">
+                <span id="promo-old-price" class="text-gray-500 line-through text-sm font-bold">500 Rs</span>
+                <span id="promo-new-price" class="text-green-400 text-xl font-black">150 Rs</span>
+            </div>
+            <button onclick="closePromo(false)" class="w-full bg-purple-500 py-2 rounded-xl text-xs font-black uppercase mb-2">Claim Offer</button>
+            <button onclick="closePromo(true)" class="w-full text-[10px] text-gray-400 uppercase font-bold underline">Don't show this again</button>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, updateDoc, collection, addDoc, query, where, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, updateDoc, collection, addDoc, query, where, onSnapshot, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = { apiKey: "AIzaSyDb_CJqakTJEVA52IYwz76egyVuINOXTmw", authDomain: "anish-285df.firebaseapp.com", projectId: "anish-285df", storageBucket: "anish-285df.firebasestorage.app", messagingSenderId: "40699037801", appId: "1:40699037801:web:06c80740ddcd85555abaf8" };
         const app = initializeApp(firebaseConfig);
@@ -163,46 +182,97 @@
         const db = getFirestore(app);
         const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1476151951493431297/iCK9QM9DFVMCq6RW78vZJ55-iLN1adccCTTt9u36iWR3qtf2EJluLZoJ5wKkpCkZq5et";
 
-        let userData = { points: 0 }, activePkg = null, isLoginMode = true;
+        let userData = { points: 0 }, activePkg = null, activeRate = 0, isLoginMode = true;
 
+        // rate = NPR per single unit (follower/like/view/etc). Set from current market research (2026):
+        // wholesale panels run roughly 0.01-0.5 NPR-equivalent per unit; retail markup applied on top.
         const allServices = {
-            insta: [{ name: "IG Followers", icon: "users" }, { name: "IG Likes", icon: "heart" }, { name: "IG Views", icon: "play" }],
-            tt: [{ name: "TikTok Followers", icon: "user-plus" }, { name: "TikTok Likes", icon: "heart" }, { name: "TikTok Views(no off)", icon: "zap" }, { name: "TikTok Repost", icon: "repeat" }, { name: "TikTok Favorites", icon: "star" }],
-            fb: [{ name: "FB Page Followers", icon: "user-check" }, { name: "FB Post Likes", icon: "thumbs-up" }],
-            yt: [{ name: "YT Subs", icon: "youtube" }, { name: "YT Views", icon: "play-circle" }],
-            x: [{ name: "X Followers", icon: "twitter" }, { name: "X Retweets", icon: "repeat" }],
-            spotify: [{ name: "Spotify Plays", icon: "music" }]
+            insta: [
+                { name: "IG Followers", icon: "users", rate: 0.15 },
+                { name: "IG Likes", icon: "heart", rate: 0.07 },
+                { name: "IG Views", icon: "play", rate: 0.02 }
+            ],
+            tt: [
+                { name: "TikTok Followers", icon: "user-plus", rate: 0.15 },
+                { name: "TikTok Likes", icon: "heart", rate: 0.06 },
+                { name: "TikTok Views", icon: "zap", rate: 0.015 },
+                { name: "TikTok Repost", icon: "repeat", rate: 0.03 },
+                { name: "TikTok Favorites", icon: "star", rate: 0.03 }
+            ],
+            fb: [
+                { name: "FB Page Followers", icon: "user-check", rate: 0.15 },
+                { name: "FB Post Likes", icon: "thumbs-up", rate: 0.07 }
+            ],
+            yt: [
+                { name: "YT Subs", icon: "youtube", rate: 0.15 },
+                { name: "YT Views", icon: "play-circle", rate: 0.02 }
+            ],
+            x: [
+                { name: "X Followers", icon: "twitter", rate: 0.15 },
+                { name: "X Retweets", icon: "repeat", rate: 0.08 }
+            ],
+            spotify: [
+                { name: "Spotify Plays", icon: "music", rate: 0.01 }
+            ]
         };
+
+        // Flat lookup so openOrder can find a package's rate/promo by name
+        const serviceLookup = {};
+        Object.values(allServices).forEach(list => list.forEach(s => serviceLookup[s.name] = s));
 
         const setLoading = (show) => document.getElementById('loading-screen').style.display = show ? 'flex' : 'none';
         const showError = (id, msg) => { const el = document.getElementById(id); el.innerText = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 5000); };
 
         window.toggleAuthMode = () => { isLoginMode = !isLoginMode; document.getElementById('auth-title').innerText = isLoginMode ? "AXE LOGIN" : "AXE REGISTER"; document.getElementById('auth-btn').innerText = isLoginMode ? "Login" : "Register"; };
-        
+
         window.handleAuthAction = async () => {
             const e = document.getElementById('email').value, p = document.getElementById('password').value;
             if(!e || !p) return showError('auth-error', "Fill Email and Password");
             setLoading(true);
-            try { 
-                if (isLoginMode) await signInWithEmailAndPassword(auth, e, p); 
-                else { 
-                    const c = await createUserWithEmailAndPassword(auth, e, p); 
-                    await setDoc(doc(db, "users", c.user.uid), { points: 0, email: e }); 
-                } 
+            try {
+                if (isLoginMode) await signInWithEmailAndPassword(auth, e, p);
+                else {
+                    const c = await createUserWithEmailAndPassword(auth, e, p);
+                    await setDoc(doc(db, "users", c.user.uid), { points: 0, email: e });
+                }
             } catch (err) { showError('auth-error', err.message); }
             setLoading(false);
         };
 
-        onAuthStateChanged(auth, (u) => { 
-            if (u) { 
-                document.getElementById('sec-auth').classList.add('hidden'); 
-                document.getElementById('main-content').classList.remove('hidden'); 
-                syncData(u.uid); 
-                showSection('sec-packages'); 
-            } else { 
-                document.getElementById('sec-auth').classList.remove('hidden'); 
-                document.getElementById('main-content').classList.add('hidden'); 
-            } 
+        // Promo banner: old price vs current IG Followers price, shown once per browser unless dismissed
+        const PROMO_OLD_PRICE = 500; // Rs per 1000 (previous price)
+        const PROMO_STORAGE_KEY = 'axe_promo_dismissed';
+
+        function showPromoIfNeeded() {
+            if (localStorage.getItem(PROMO_STORAGE_KEY) === '1') return;
+            const newPricePer1000 = (serviceLookup["IG Followers"]?.rate ?? 0.15) * 1000;
+            const discountPct = Math.round(((PROMO_OLD_PRICE - newPricePer1000) / PROMO_OLD_PRICE) * 100);
+            document.getElementById('promo-badge').innerText = discountPct + '% OFF';
+            document.getElementById('promo-old-price').innerText = PROMO_OLD_PRICE + ' Rs';
+            document.getElementById('promo-new-price').innerText = newPricePer1000 + ' Rs';
+            document.getElementById('promo-modal').classList.remove('hidden');
+            document.getElementById('promo-overlay').style.display = 'block';
+            lucide.createIcons();
+        }
+
+        window.closePromo = (dontShowAgain) => {
+            if (dontShowAgain) localStorage.setItem(PROMO_STORAGE_KEY, '1');
+            document.getElementById('promo-modal').classList.add('hidden');
+            document.getElementById('promo-overlay').style.display = 'none';
+        };
+
+        onAuthStateChanged(auth, (u) => {
+            if (u) {
+                document.getElementById('sec-auth').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+                syncData(u.uid);
+                showSection('sec-packages');
+                filterServices('insta', document.querySelector('.platform-pill.active'));
+                showPromoIfNeeded();
+            } else {
+                document.getElementById('sec-auth').classList.remove('hidden');
+                document.getElementById('main-content').classList.add('hidden');
+            }
         });
 
         function syncData(uid) {
@@ -211,6 +281,21 @@
                 let spent = 0; s.forEach(d => { if(d.data().method === 'wallet') spent += (d.data().price || 0); });
                 document.getElementById('stat-orders').innerText = s.size; document.getElementById('stat-spent').innerText = spent.toFixed(1);
                 renderHistory(uid);
+            });
+            // Auto-credit wallet the moment a fund request's status is set to Complete/Success (e.g. by admin).
+            // Guarded by a "credited" flag on the request so it only ever fires once per request.
+            onSnapshot(query(collection(db, "fund_requests"), where("userId", "==", uid)), (s) => {
+                s.docChanges().forEach(async (change) => {
+                    const data = change.doc.data();
+                    const status = (data.status || "").toLowerCase();
+                    if ((status === 'complete' || status === 'success') && !data.credited) {
+                        const amt = Number(data.amount) || 0;
+                        if (amt > 0) {
+                            await updateDoc(doc(db, "users", uid), { points: increment(amt) });
+                            await updateDoc(doc(db, "fund_requests", change.doc.id), { credited: true });
+                        }
+                    }
+                });
             });
         }
 
@@ -234,14 +319,13 @@
 
         window.processOrder = async () => {
             const qty = parseInt(document.getElementById('order-amount').value), link = document.getElementById('txn-remark').value, sN = document.getElementById('order-sender-name').value, sNum = document.getElementById('order-sender-num').value, r = document.getElementById('order-remark-text').value;
-            const isDiscounted = activePkg?.includes("TikTok") && (activePkg.includes("Views") || activePkg.includes("Repost") || activePkg.includes("Favorites"));
-            const p = qty * (isDiscounted ? 0.1 : 0.5);
+            const p = Math.round((qty || 0) * activeRate * 100) / 100;
             if (!qty || !link || !sN || !sNum) return showError('order-error', "Fill All Required Fields!");
             if (document.getElementById('order-pay-method').value === 'wallet' && userData.points < p) return showError('order-error', "Insufficient Wallet Balance!");
-            
+
             setLoading(true);
             try {
-                if (document.getElementById('order-pay-method').value === 'wallet') await updateDoc(doc(db, "users", auth.currentUser.uid), { points: userData.points - p });
+                if (document.getElementById('order-pay-method').value === 'wallet') await updateDoc(doc(db, "users", auth.currentUser.uid), { points: increment(-p) });
                 await addDoc(collection(db, "orders"), { userId: auth.currentUser.uid, packageName: activePkg, price: p, quantity: qty, method: document.getElementById('order-pay-method').value, status: "Pending", createdAt: serverTimestamp(), remark: link, senderName: sN, senderNum: sNum });
                 await fetch(DISCORD_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ "content": `🚀 **ORDER**\nuser: ${auth.currentUser.email}\npackage: ${activePkg}\nlink: ${link}\nremark: ${r || "N/A"}\namount: ${p} Rs\nsender name: ${sN}\nsender number: ${sNum}` }) });
                 alert("Order Placed!"); showSection('sec-history');
@@ -254,7 +338,7 @@
             if(!amt || !sN || !sM) return showError('fund-error', "Fill All Fields");
             setLoading(true);
             try {
-                await addDoc(collection(db, "fund_requests"), { userId: auth.currentUser.uid, userEmail: auth.currentUser.email, amount: amt, senderName: sN, senderNum: sM, remark: r, status: "Pending", createdAt: serverTimestamp() });
+                await addDoc(collection(db, "fund_requests"), { userId: auth.currentUser.uid, userEmail: auth.currentUser.email, amount: Number(amt), senderName: sN, senderNum: sM, remark: r, status: "Pending", credited: false, createdAt: serverTimestamp() });
                 await fetch(DISCORD_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ "content": `💰 **DEPOSIT**\nuser: ${auth.currentUser.email}\namount: ${amt} Rs\nsender name: ${sN}\nsender number: ${sM}\nremark: ${r || "N/A"}` }) });
                 window.open(`https://wa.me/9806167776?text=Deposit:${amt}%20Name:${sN}`);
                 showSection('sec-history');
@@ -267,20 +351,24 @@
             document.querySelectorAll('.platform-pill').forEach(t => t.classList.remove('active')); el.classList.add('active');
             const grid = document.getElementById('services-grid'); grid.innerHTML = "";
             allServices[platform].forEach(s => {
-                const isPromo = platform === 'tt' && (s.name.includes("Views") || s.name.includes("Repost") || s.name.includes("Favorites"));
                 grid.innerHTML += `<div onclick="openOrder('${s.name}')" class="glass-card p-5 rounded-3xl cursor-pointer hover:border-purple-500">
-                    ${isPromo ? '<span class="promo-text">** 80% DISCOUNT **</span>' : ''}
                     <i data-lucide="${s.icon}" class="text-purple-400 mb-2 w-5 h-5"></i>
                     <h3 class="font-black text-white text-[10px] uppercase">${s.name}</h3>
                 </div>`;
             }); lucide.createIcons();
         };
         window.toggleOrderQR = () => { document.getElementById('order-qr-box').classList.toggle('hidden', document.getElementById('order-pay-method').value !== 'esewa'); };
-        window.openOrder = (name) => { activePkg = name; document.getElementById('selected-pkg-name').innerText = name; showSection('sec-payment'); };
-        window.updatePrice = () => { 
+        window.openOrder = (name) => {
+            activePkg = name;
+            activeRate = serviceLookup[name]?.rate ?? 0.15;
+            document.getElementById('selected-pkg-name').innerText = name;
+            document.getElementById('order-amount').value = '';
+            updatePrice();
+            showSection('sec-payment');
+        };
+        window.updatePrice = () => {
             const q = document.getElementById('order-amount').value || 0;
-            const d = activePkg?.includes("TikTok") && (activePkg.includes("Views") || activePkg.includes("Repost") || activePkg.includes("Favorites"));
-            document.getElementById('live-price').innerText = (q * (d ? 0.1 : 0.5)).toFixed(2) + " Rs"; 
+            document.getElementById('live-price').innerText = (q * activeRate).toFixed(2) + " Rs";
         };
         window.toggleMenu = () => { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').style.display = document.getElementById('overlay').style.display === 'block' ? 'none' : 'block'; };
         window.logout = () => signOut(auth);
