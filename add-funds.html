@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Funds | AXE SMM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800;900&family=Outfit:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p class="loading-text">Loading...</p>
+    </div>
+
+    <div id="app">
+        <!-- Header -->
+        <header>
+            <div class="brand">
+                <img src="assets/logo.png" alt="AXE" class="logo" onerror="this.style.display='none'">
+                <span class="brand-name">AXE SMM</span>
+            </div>
+            <div class="header-actions">
+                <div class="balance-pill" onclick="window.location.href='add-funds.html'">
+                    <i class="fas fa-wallet"></i>
+                    <span>₹<span id="wallet-balance">0.00</span></span>
+                </div>
+                <div class="menu-toggle" id="menuToggle">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <a href="dashboard.html"><i class="fas fa-chart-pie"></i> Dashboard</a>
+            <a href="services.html"><i class="fas fa-th-large"></i> Services</a>
+            <a href="add-funds.html" class="active"><i class="fas fa-plus-circle" style="color: var(--success-green);"></i> Add Funds</a>
+            <a href="history.html"><i class="fas fa-clock"></i> History</a>
+            <a href="refer.html"><i class="fas fa-gift" style="color: var(--gold);"></i> Refer & Earn</a>
+            <a href="#" id="logout-btn" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+
+        <div class="overlay" id="overlay"></div>
+
+        <!-- Main Content -->
+        <main>
+            <h2 class="section-title"><i class="fas fa-plus-circle" style="color: var(--success-green);"></i> Add Funds</h2>
+            
+            <div class="fund-card">
+                <div class="qr-container">
+                    <img src="assets/qr-code.png" alt="QR Code" onerror="this.src='https://via.placeholder.com/180/ffffff/000000?text=QR+CODE'">
+                    <p class="hint">Scan to pay via eSewa / Bank</p>
+                </div>
+                
+                <div id="fund-error" class="error-msg"></div>
+                
+                <div class="payment-options">
+                    <div class="payment-option active" data-payment="esewa">
+                        <img src="assets/esewa-logo.JPG" alt="eSewa" class="icon-img" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'font-size:1.5rem;\'>💳</span><span class=\'label\'>eSewa</span>'">
+                        <span class="label">eSewa</span>
+                    </div>
+                    <div class="payment-option" data-payment="bank">
+                        <img src="assets/bank.png" alt="Bank" class="icon-img" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'font-size:1.5rem;\'>🏦</span><span class=\'label\'>Bank</span>'">
+                        <span class="label">Bank</span>
+                    </div>
+                </div>
+
+                <input type="number" id="fund-amount" class="input-field" placeholder="Amount (NPR)" />
+                <input type="text" id="fund-sender-name" class="input-field" placeholder="Sender Name" />
+                <input type="text" id="fund-sender-num" class="input-field" placeholder="Sender Number" />
+                <input type="text" id="fund-remark" class="input-field" placeholder="Remark (Optional)" />
+                
+                <div class="file-upload" id="fund-file-upload">
+                    <i class="fas fa-camera"></i> <span id="fund-file-label">Tap to attach payment screenshot</span>
+                    <input type="file" id="fund-screenshot" accept="image/*" />
+                </div>
+
+                <button class="btn-secondary" id="submit-fund-btn"><i class="fas fa-paper-plane"></i> Submit Deposit</button>
+            </div>
+        </main>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+                "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+                "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+            }
+        }
+    </script>
+    <script type="module">
+        import { initializeApp } from "firebase/app";
+        import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+        import { getFirestore, doc, onSnapshot, collection, addDoc, serverTimestamp } from "firebase/firestore";
+
+        const firebaseConfig = { 
+            apiKey: "AIzaSyDb_CJqakTJEVA52IYwz76egyVuINOXTmw", 
+            authDomain: "anish-285df.firebaseapp.com", 
+            projectId: "anish-285df", 
+            storageBucket: "anish-285df.firebasestorage.app", 
+            messagingSenderId: "40699037801", 
+            appId: "1:40699037801:web:06c80740ddcd85555abaf8" 
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1476151951493431297/iCK9QM9DFVMCq6RW78vZJ55-iLN1adccCTTt9u36iWR3qtf2EJluLZoJ5wKkpCkZq5et";
+
+        let currentUser = null;
+        let fundFile = null;
+        let selectedPayment = 'esewa';
+
+        const setLoading = (show) => {
+            document.getElementById('loading-screen').style.display = show ? 'flex' : 'none';
+        };
+
+        const showError = (msg) => {
+            const el = document.getElementById('fund-error');
+            el.innerText = msg;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 5000);
+        };
+
+        // Menu Toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+
+        menuToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+            this.classList.toggle('active');
+        });
+
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            menuToggle.classList.remove('active');
+        });
+
+        document.querySelectorAll('.sidebar a').forEach(link => {
+            link.addEventListener('click', () => {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+                menuToggle.classList.remove('active');
+            });
+        });
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await signOut(auth);
+            window.location.href = 'index.html';
+        });
+
+        // Payment option selection
+        document.querySelectorAll('.payment-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                document.querySelectorAll('.payment-option').forEach(o => o.classList.remove('active'));
+                opt.classList.add('active');
+                selectedPayment = opt.dataset.payment;
+            });
+        });
+
+        // File upload
+        document.getElementById('fund-file-upload').addEventListener('click', () => {
+            document.getElementById('fund-screenshot').click();
+        });
+
+        document.getElementById('fund-screenshot').addEventListener('change', () => {
+            const input = document.getElementById('fund-screenshot');
+            const label = document.getElementById('fund-file-label');
+            if (input.files && input.files[0]) {
+                fundFile = input.files[0];
+                document.getElementById('fund-file-upload').classList.add('has-file');
+                label.innerText = `✅ ${fundFile.name}`;
+            }
+        });
+
+        // Submit fund request
+        document.getElementById('submit-fund-btn').addEventListener('click', async () => {
+            const amount = document.getElementById('fund-amount').value.trim();
+            const senderName = document.getElementById('fund-sender-name').value.trim();
+            const senderNum = document.getElementById('fund-sender-num').value.trim();
+            const remark = document.getElementById('fund-remark').value.trim();
+
+            if (!amount || !senderName || !senderNum) {
+                return showError('Please fill all required fields.');
+            }
+            if (!fundFile) {
+                return showError('Please attach a payment screenshot.');
+            }
+
+            setLoading(true);
+            try {
+                await addDoc(collection(db, "fund_requests"), {
+                    userId: currentUser.uid,
+                    userEmail: currentUser.email,
+                    amount: Number(amount),
+                    senderName: senderName,
+                    senderNum: senderNum,
+                    remark: remark || 'No remark',
+                    paymentMethod: selectedPayment,
+                    status: 'pending',
+                    credited: false,
+                    createdAt: serverTimestamp()
+                });
+
+                const formData = new FormData();
+                formData.append('payload_json', JSON.stringify({
+                    content: `💰 **DEPOSIT REQUEST**\nUser: ${currentUser.email}\nAmount: ₹${amount}\nSender: ${senderName}\nNumber: ${senderNum}\nMethod: ${selectedPayment}\nRemark: ${remark || 'N/A'}`
+                }));
+                formData.append('files[0]', fundFile, fundFile.name);
+                await fetch(DISCORD_WEBHOOK, { method: 'POST', body: formData });
+
+                alert('✅ Deposit request submitted! We will verify and credit your wallet soon.');
+                document.getElementById('fund-amount').value = '';
+                document.getElementById('fund-sender-name').value = '';
+                document.getElementById('fund-sender-num').value = '';
+                document.getElementById('fund-remark').value = '';
+                document.getElementById('fund-file-upload').classList.remove('has-file');
+                document.getElementById('fund-file-label').innerText = 'Tap to attach payment screenshot';
+                fundFile = null;
+                window.location.href = 'history.html';
+
+            } catch (err) {
+                showError(err.message);
+            }
+            setLoading(false);
+        });
+
+        // Auth Check
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                onSnapshot(doc(db, "users", user.uid), (snap) => {
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        document.getElementById('wallet-balance').innerText = (data.points || 0).toFixed(2);
+                    }
+                });
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>

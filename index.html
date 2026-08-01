@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AXE | Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800;900&family=Outfit:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p class="loading-text">Loading...</p>
+    </div>
+
+    <div id="sec-auth">
+        <div class="auth-card">
+            <div class="brand-avatar">
+                <img src="assets/logo.png" alt="AXE" onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'fas fa-bolt\'></i>'">
+            </div>
+            <span class="brand-name">AXE SMM</span>
+            <h2 id="auth-title">Login</h2>
+            <div id="auth-error" class="auth-error"></div>
+            <input type="email" id="auth-email" class="auth-input" placeholder="Email Address" />
+            <input type="password" id="auth-password" class="auth-input" placeholder="Password" />
+            <button class="auth-btn" id="auth-btn">Login</button>
+            <p class="auth-switch">New here? <span id="auth-toggle">Register</span></p>
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+                "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+                "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+            }
+        }
+    </script>
+    <script type="module">
+        import { initializeApp } from "firebase/app";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+        import { getFirestore, doc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+
+        const firebaseConfig = { 
+            apiKey: "AIzaSyDb_CJqakTJEVA52IYwz76egyVuINOXTmw", 
+            authDomain: "anish-285df.firebaseapp.com", 
+            projectId: "anish-285df", 
+            storageBucket: "anish-285df.firebasestorage.app", 
+            messagingSenderId: "40699037801", 
+            appId: "1:40699037801:web:06c80740ddcd85555abaf8" 
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // ✅ YOUR DISCORD WEBHOOK URL
+        const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1476151951493431297/iCK9QM9DFVMCq6RW78vZJ55-iLN1adccCTTt9u36iWR3qtf2EJluLZoJ5wKkpCkZq5et";
+
+        let isLoginMode = true;
+
+        const setLoading = (show) => {
+            document.getElementById('loading-screen').style.display = show ? 'flex' : 'none';
+        };
+
+        const showError = (msg) => {
+            const el = document.getElementById('auth-error');
+            el.innerText = msg;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 5000);
+        };
+
+        const showToast = (msg) => {
+            alert(msg);
+        };
+
+        document.getElementById('auth-toggle').addEventListener('click', () => {
+            isLoginMode = !isLoginMode;
+            document.getElementById('auth-title').innerText = isLoginMode ? 'Login' : 'Register';
+            document.getElementById('auth-btn').innerText = isLoginMode ? 'Login' : 'Register';
+        });
+
+        document.getElementById('auth-btn').addEventListener('click', async () => {
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            if (!email || !password) return showError('Enter both email and password');
+
+            setLoading(true);
+            try {
+                if (isLoginMode) {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } else {
+                    // 🔐 REGISTER NEW USER
+                    const cred = await createUserWithEmailAndPassword(auth, email, password);
+                    await setDoc(doc(db, "users", cred.user.uid), {
+                        points: 0,
+                        referrals: 0,
+                        referralEarned: 0,
+                        email: email,
+                        createdAt: serverTimestamp()
+                    });
+
+                    // 📢 SEND DISCORD NOTIFICATION
+                    const params = new URLSearchParams(window.location.search);
+                    const ref = params.get('ref');
+                    
+                    try {
+                        const response = await fetch(DISCORD_WEBHOOK, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                content: `🆕 **NEW USER REGISTERED**\n📧 Email: ${email}\n🆔 UID: ${cred.user.uid}\n🔗 Referred by: ${ref || 'None'}`
+                            })
+                        });
+                        if (response.ok) {
+                            console.log('✅ Discord notification sent!');
+                        } else {
+                            console.error('❌ Discord notification failed:', response.status);
+                        }
+                    } catch (discordErr) {
+                        console.error('❌ Discord webhook error:', discordErr);
+                        // Don't break registration if Discord fails
+                    }
+
+                    showToast('Account created successfully!');
+                }
+                window.location.href = 'dashboard.html';
+            } catch (err) {
+                showError(err.message.replace('Firebase: ', ''));
+            }
+            setLoading(false);
+        });
+
+        // Handle referral parameter after login (for already logged-in users)
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const params = new URLSearchParams(window.location.search);
+                const ref = params.get('ref');
+                if (ref && user.uid !== ref) {
+                    await updateDoc(doc(db, "users", user.uid), {
+                        referredBy: ref
+                    }).catch(() => {});
+                }
+                window.location.href = 'dashboard.html';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History | AXE SMM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800;900&family=Outfit:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p class="loading-text">Loading...</p>
+    </div>
+
+    <div id="app">
+        <header>
+            <div class="brand">
+                <img src="assets/logo.png" alt="AXE" class="logo" onerror="this.style.display='none'">
+                <span class="brand-name">AXE SMM</span>
+            </div>
+            <div class="header-actions">
+                <div class="balance-pill" onclick="window.location.href='add-funds.html'">
+                    <i class="fas fa-wallet"></i>
+                    <span>₹<span id="wallet-balance">0.00</span></span>
+                </div>
+                <div class="menu-toggle" id="menuToggle">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        </header>
+
+        <div class="sidebar" id="sidebar">
+            <a href="dashboard.html"><i class="fas fa-chart-pie"></i> Dashboard</a>
+            <a href="services.html"><i class="fas fa-th-large"></i> Services</a>
+            <a href="add-funds.html"><i class="fas fa-plus-circle" style="color: var(--success-green);"></i> Add Funds</a>
+            <a href="history.html" class="active"><i class="fas fa-clock"></i> History</a>
+            <a href="refer.html"><i class="fas fa-gift" style="color: var(--gold);"></i> Refer & Earn</a>
+            <a href="#" id="logout-btn" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+
+        <div class="overlay" id="overlay"></div>
+
+        <main>
+            <h2 class="section-title"><i class="fas fa-clock" style="color: var(--accent-cyan);"></i> History</h2>
+            
+            <div class="history-filters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="orders">Orders</button>
+                <button class="filter-btn" data-filter="funds">Funds</button>
+            </div>
+
+            <div id="history-list">
+                <div class="empty-state">
+                    <div class="spinner" style="margin: 0 auto;"></div>
+                    <p style="margin-top: 12px;">Loading...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+                "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+                "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+            }
+        }
+    </script>
+    <script type="module">
+        import { initializeApp } from "firebase/app";
+        import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+        import { getFirestore, doc, onSnapshot, collection, query, where, getDocs } from "firebase/firestore";
+
+        const firebaseConfig = { 
+            apiKey: "AIzaSyDb_CJqakTJEVA52IYwz76egyVuINOXTmw", 
+            authDomain: "anish-285df.firebaseapp.com", 
+            projectId: "anish-285df", 
+            storageBucket: "anish-285df.firebasestorage.app", 
+            messagingSenderId: "40699037801", 
+            appId: "1:40699037801:web:06c80740ddcd85555abaf8" 
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        let currentFilter = 'all';
+
+        const setLoading = (show) => {
+            document.getElementById('loading-screen').style.display = show ? 'flex' : 'none';
+        };
+
+        // Menu Toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+
+        menuToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+            this.classList.toggle('active');
+        });
+
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            menuToggle.classList.remove('active');
+        });
+
+        document.querySelectorAll('.sidebar a').forEach(link => {
+            link.addEventListener('click', () => {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+                menuToggle.classList.remove('active');
+            });
+        });
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await signOut(auth);
+            window.location.href = 'index.html';
+        });
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                loadHistory();
+            });
+        });
+
+        // Load History
+        async function loadHistory() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto;"></div><p style="margin-top:12px;">Loading...</p></div>';
+
+            if (!currentUser) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <h3>Please Login</h3>
+                        <p>You need to be logged in to view your history.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                let items = [];
+
+                // Load orders
+                if (currentFilter === 'all' || currentFilter === 'orders') {
+                    const q1 = query(collection(db, "orders"), where("userId", "==", currentUser.uid));
+                    const snap1 = await getDocs(q1);
+                    snap1.forEach(doc => {
+                        const data = doc.data();
+                        items.push({ 
+                            ...data, 
+                            type: 'order',
+                            id: doc.id,
+                            timestamp: data.createdAt?.seconds || 0
+                        });
+                    });
+                }
+
+                // Load fund requests
+                if (currentFilter === 'all' || currentFilter === 'funds') {
+                    const q2 = query(collection(db, "fund_requests"), where("userId", "==", currentUser.uid));
+                    const snap2 = await getDocs(q2);
+                    snap2.forEach(doc => {
+                        const data = doc.data();
+                        items.push({ 
+                            ...data, 
+                            type: 'fund',
+                            id: doc.id,
+                            timestamp: data.createdAt?.seconds || 0
+                        });
+                    });
+                }
+
+                // Sort by timestamp (newest first)
+                items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+                if (items.length === 0) {
+                    list.innerHTML = `
+                        <div class="empty-state">
+                            <div class="icon"><i class="fas fa-inbox"></i></div>
+                            <h3>No Activity Yet</h3>
+                            <p>Your orders and fund requests will appear here.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                items.forEach(item => {
+                    const isCompleted = item.status === 'completed' || item.status === 'success';
+                    const statusClass = isCompleted ? 'status-completed' : 'status-pending';
+                    const statusText = isCompleted ? '✅ Completed' : '⏳ Pending';
+                    
+                    // Support both field names: packageName OR service, price OR amount
+                    const title = item.type === 'order' 
+                        ? (item.packageName || item.service || 'Order') 
+                        : '💰 Deposit Request';
+                    
+                    let amount = 0;
+                    if (item.type === 'order') {
+                        amount = typeof item.price === 'number' ? item.price 
+                               : (typeof item.amount === 'number' ? item.amount : 0);
+                    } else {
+                        amount = typeof item.amount === 'number' ? item.amount : 0;
+                    }
+                    
+                    const sub = item.type === 'order' 
+                        ? `${item.link || 'N/A'} · Qty: ${item.quantity || 0}` 
+                        : `${item.senderName || 'N/A'} · ${item.senderNum || 'N/A'}`;
+                    const method = item.type === 'order' ? item.method : item.paymentMethod || 'N/A';
+
+                    html += `
+                        <div class="history-item">
+                            <div class="left">
+                                <div class="title">${title}</div>
+                                <div class="sub">${sub}</div>
+                                <div style="font-size:0.6rem;color:var(--text-dim);margin-top:2px;">
+                                    Method: ${method.toUpperCase()}
+                                </div>
+                            </div>
+                            <div class="right">
+                                <div class="amount">₹${amount.toFixed(2)}</div>
+                                <span class="status ${statusClass}">${statusText}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                list.innerHTML = html;
+
+            } catch (err) {
+                console.error('History error:', err);
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <h3>Error Loading History</h3>
+                        <p>${err.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Auth Check
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                onSnapshot(doc(db, "users", user.uid), (snap) => {
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        document.getElementById('wallet-balance').innerText = (data.points || 0).toFixed(2);
+                    }
+                });
+                loadHistory();
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Services | AXE SMM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800;900&family=Outfit:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Extra styles for live stats and reviews */
+        .live-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin: 30px 0 20px;
+        }
+        .live-stat-card {
+            background: linear-gradient(160deg, rgba(20, 20, 31, 0.9), rgba(10, 10, 18, 0.9));
+            border: 1px solid rgba(139, 92, 246, 0.12);
+            border-radius: var(--border-radius);
+            padding: 18px 16px;
+            text-align: center;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        .live-stat-card:hover { border-color: var(--accent-cyan); box-shadow: var(--glow-cyan); transform: translateY(-3px); }
+        .live-stat-card .live-icon { font-size: 1.6rem; margin-bottom: 4px; }
+        .live-stat-card .live-number { font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 900; }
+        .live-stat-card .live-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+        .live-stat-card .pulse {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--success-green);
+            animation: pulse 2s infinite;
+        }
+        .live-stat-card .pulse.cyan { background: var(--accent-cyan); }
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .review-section {
+            margin-top: 30px;
+            background: linear-gradient(160deg, rgba(20, 20, 31, 0.8), rgba(10, 10, 18, 0.8));
+            border: 1px solid rgba(139, 92, 246, 0.06);
+            border-radius: var(--border-radius);
+            padding: 24px;
+        }
+        .review-section h3 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 900;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .review-list { max-height: 200px; overflow-y: auto; }
+        .review-item {
+            border-bottom: 1px solid rgba(139, 92, 246, 0.05);
+            padding: 10px 0;
+        }
+        .review-item:last-child { border-bottom: none; }
+        .review-item .review-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+        .review-item .review-header .reviewer { font-weight: 600; color: var(--text-soft); }
+        .review-item .review-stars { color: var(--gold); letter-spacing: 2px; }
+        .review-item .review-text { font-size: 0.85rem; margin-top: 4px; color: var(--text-soft); }
+        .review-form {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .review-form input, .review-form select {
+            flex: 1;
+            min-width: 140px;
+            padding: 10px 14px;
+            background: rgba(139, 92, 246, 0.04);
+            border: 1px solid rgba(139, 92, 246, 0.12);
+            border-radius: 10px;
+            color: var(--text-soft);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            outline: none;
+            transition: var(--transition);
+        }
+        .review-form input:focus, .review-form select:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+        }
+        .review-form .btn-submit-review {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--neon-purple), var(--accent-blue));
+            color: #fff;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .review-form .btn-submit-review:hover { transform: translateY(-2px); box-shadow: var(--glow-cyan); }
+        .avg-rating {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .avg-rating .big-stars { font-size: 1.4rem; color: var(--gold); }
+        .avg-rating .avg-number { font-size: 1.8rem; font-weight: 900; font-family: 'Outfit', sans-serif; }
+
+        @media (max-width: 768px) {
+            .live-stats { grid-template-columns: 1fr; }
+            .review-form { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p class="loading-text">Loading...</p>
+    </div>
+
+    <div id="app">
+        <!-- Header -->
+        <header>
+            <div class="brand">
+                <img src="assets/logo.png" alt="AXE" class="logo" onerror="this.style.display='none'">
+                <span class="brand-name">AXE SMM</span>
+            </div>
+            <div class="header-actions">
+                <div class="balance-pill" onclick="window.location.href='add-funds.html'">
+                    <i class="fas fa-wallet"></i>
+                    <span>₹<span id="wallet-balance">0.00</span></span>
+                </div>
+                <div class="menu-toggle" id="menuToggle">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <a href="dashboard.html"><i class="fas fa-chart-pie"></i> Dashboard</a>
+            <a href="services.html" class="active"><i class="fas fa-th-large"></i> Services</a>
+            <a href="add-funds.html"><i class="fas fa-plus-circle" style="color: var(--success-green);"></i> Add Funds</a>
+            <a href="history.html"><i class="fas fa-clock"></i> History</a>
+            <a href="refer.html"><i class="fas fa-gift" style="color: var(--gold);"></i> Refer & Earn</a>
+            <a href="#" id="logout-btn" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+
+        <div class="overlay" id="overlay"></div>
+
+        <!-- Main Content -->
+        <main>
+            <h2 class="section-title"><i class="fas fa-th-large"></i> Services</h2>
+            
+            <div class="platform-pills" id="platformPills">
+                <div class="platform-pill active" data-platform="instagram">
+                    <img src="assets/insta.png" alt="Instagram" onerror="this.style.display='none'">
+                    Instagram
+                </div>
+                <div class="platform-pill" data-platform="tiktok">
+                    <img src="assets/tiktok.png" alt="TikTok" onerror="this.style.display='none'">
+                    TikTok
+                </div>
+                <div class="platform-pill" data-platform="facebook">
+                    <img src="assets/fb.png" alt="Facebook" onerror="this.style.display='none'">
+                    Facebook
+                </div>
+                <div class="platform-pill" data-platform="youtube">
+                    <img src="assets/yt.png" alt="YouTube" onerror="this.style.display='none'">
+                    YouTube
+                </div>
+                <div class="platform-pill" data-platform="twitter">
+                    <img src="assets/x.png" alt="X" onerror="this.style.display='none'">
+                    X (Twitter)
+                </div>
+                <div class="platform-pill" data-platform="spotify">
+                    <img src="assets/spotify.png" alt="Spotify" onerror="this.style.display='none'">
+                    Spotify
+                </div>
+            </div>
+
+            <div class="service-search">
+                <input type="text" id="service-search" placeholder="🔍 Search services..." />
+            </div>
+
+            <div class="services-grid" id="servicesGrid"></div>
+
+            <!-- ===== LIVE STATS & REVIEWS (moved from dashboard) ===== -->
+            <div class="live-stats">
+                <div class="live-stat-card">
+                    <div class="live-icon">📦</div>
+                    <div class="live-number" id="live-total-orders">0</div>
+                    <div class="live-label">Total Orders (All Users)</div>
+                    <div class="pulse cyan"></div>
+                </div>
+                <div class="live-stat-card">
+                    <div class="live-icon">🟢</div>
+                    <div class="live-number" id="online-users">0</div>
+                    <div class="live-label">Online Users</div>
+                    <div class="pulse"></div>
+                </div>
+                <div class="live-stat-card">
+                    <div class="live-icon">⭐</div>
+                    <div class="live-number" id="avg-rating">0.0</div>
+                    <div class="live-label">Average Rating</div>
+                </div>
+            </div>
+
+            <div class="review-section">
+                <h3><i class="fas fa-star" style="color: var(--gold);"></i> Reviews</h3>
+                <div class="avg-rating">
+                    <span class="big-stars" id="avg-stars-display">☆☆☆☆☆</span>
+                    <span class="avg-number" id="avg-number-display">0.0</span>
+                    <span style="color: var(--text-dim); font-size:0.8rem;">(<span id="review-count">0</span> reviews)</span>
+                </div>
+                <div class="review-list" id="review-list">
+                    <div class="empty-state" style="padding:20px;">
+                        <p>No reviews yet. Be the first!</p>
+                    </div>
+                </div>
+                <div class="review-form">
+                    <input type="text" id="reviewer-name" placeholder="Your name" />
+                    <select id="review-rating">
+                        <option value="5">⭐⭐⭐⭐⭐</option>
+                        <option value="4">⭐⭐⭐⭐</option>
+                        <option value="3">⭐⭐⭐</option>
+                        <option value="2">⭐⭐</option>
+                        <option value="1">⭐</option>
+                    </select>
+                    <input type="text" id="review-text" placeholder="Your review..." />
+                    <button class="btn-submit-review" id="submit-review-btn">Submit</button>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Order Modal -->
+        <div id="order-modal">
+            <div class="modal-content">
+                <button class="modal-close" id="close-modal">&times;</button>
+                <h2 class="modal-title">
+                    <i class="fas fa-shopping-cart"></i> 
+                    <span id="modal-service-name">Order</span>
+                </h2>
+                <div id="modal-error" class="error-msg"></div>
+                <input type="text" id="modal-link" class="input-field" placeholder="Profile / Video Link (required)" />
+                
+                <div class="btn-quantity">
+                    <button id="qty-minus">−</button>
+                    <input type="number" id="modal-quantity" class="input-field" placeholder="Quantity (min 25)" value="25" min="25" />
+                    <button id="qty-plus">+</button>
+                </div>
+
+                <div class="price-display">
+                    <div class="label">Total Price</div>
+                    <div class="amount" id="modal-total-price">₹0.00</div>
+                </div>
+
+                <div class="payment-label">Payment Method</div>
+                <div class="payment-methods">
+                    <div class="payment-method selected" data-method="wallet">
+                        <span class="icon"><i class="fas fa-wallet" style="color: var(--success-green);"></i></span>
+                        <div class="label">Wallet</div>
+                    </div>
+                    <div class="payment-method" data-method="esewa">
+                        <img src="assets/esewa-logo.JPG" alt="eSewa" class="icon-img" onerror="this.style.display='none'; this.parentElement.innerHTML='<span class=\'icon\' style=\'font-size:1.8rem;\'>💳</span><div class=\'label\'>eSewa</div>'">
+                        <div class="label">eSewa</div>
+                    </div>
+                    <div class="payment-method" data-method="bank">
+                        <img src="assets/bank.png" alt="Bank" class="icon-img" onerror="this.style.display='none'; this.parentElement.innerHTML='<span class=\'icon\' style=\'font-size:1.8rem;\'>🏦</span><div class=\'label\'>Bank</div>'">
+                        <div class="label">Bank</div>
+                    </div>
+                </div>
+
+                <button class="btn-primary" id="place-order-btn"><i class="fas fa-check-circle"></i> Place Order</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+                "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+                "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+            }
+        }
+    </script>
+    <script type="module">
+        import { initializeApp } from "firebase/app";
+        import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+        import { getFirestore, doc, onSnapshot, query, collection, where, addDoc, updateDoc, increment, serverTimestamp, setDoc, getDocs } from "firebase/firestore";
+
+        const firebaseConfig = { 
+            apiKey: "AIzaSyDb_CJqakTJEVA52IYwz76egyVuINOXTmw", 
+            authDomain: "anish-285df.firebaseapp.com", 
+            projectId: "anish-285df", 
+            storageBucket: "anish-285df.firebasestorage.app", 
+            messagingSenderId: "40699037801", 
+            appId: "1:40699037801:web:06c80740ddcd85555abaf8" 
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1476151951493431297/iCK9QM9DFVMCq6RW78vZJ55-iLN1adccCTTt9u36iWR3qtf2EJluLZoJ5wKkpCkZq5et";
+
+        let currentUser = null;
+        let userData = { points: 0 };
+        let modalService = null;
+        let modalPayment = 'wallet';
+
+        const setLoading = (show) => {
+            document.getElementById('loading-screen').style.display = show ? 'flex' : 'none';
+        };
+
+        const showError = (id, msg) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.innerText = msg;
+                el.style.display = 'block';
+                setTimeout(() => el.style.display = 'none', 5000);
+            }
+        };
+
+        const showToast = (message) => {
+            alert(message);
+        };
+
+        // ===== MENU TOGGLE =====
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+
+        menuToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+            this.classList.toggle('active');
+        });
+
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            menuToggle.classList.remove('active');
+        });
+
+        document.querySelectorAll('.sidebar a').forEach(link => {
+            link.addEventListener('click', () => {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+                menuToggle.classList.remove('active');
+            });
+        });
+
+        // ===== LOGOUT =====
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await signOut(auth);
+            window.location.href = 'index.html';
+        });
+
+        // ===== SERVICES DATA =====
+        const platformLogos = {
+            instagram: { icon: 'fab fa-instagram', logo: 'logo-insta', img: 'insta.png' },
+            tiktok: { icon: 'fab fa-tiktok', logo: 'logo-tt', img: 'tiktok.png' },
+            facebook: { icon: 'fab fa-facebook', logo: 'logo-fb', img: 'fb.png' },
+            youtube: { icon: 'fab fa-youtube', logo: 'logo-yt', img: 'yt.png' },
+            twitter: { icon: 'fab fa-twitter', logo: 'logo-x', img: 'x.png' },
+            spotify: { icon: 'fab fa-spotify', logo: 'logo-spotify', img: 'spotify.png' }
+        };
+
+        const servicesData = {
+            instagram: [
+                { name: 'IG Followers', rate: 0.45, instant: true },
+                { name: 'IG Likes', rate: 0.21, instant: true },
+                { name: 'IG Views', rate: 0.06, instant: true },
+                { name: 'IG Comments', rate: 0.24, instant: true },
+                { name: 'IG Saves', rate: 0.15, instant: true }
+            ],
+            tiktok: [
+                { name: 'TikTok Followers', rate: 0.45 },
+                { name: 'TikTok Likes', rate: 0.18 },
+                { name: 'TikTok Views', rate: 0.045 },
+                { name: 'TikTok Reposts', rate: 0.09 },
+                { name: 'TikTok Favorites', rate: 0.09 }
+            ],
+            facebook: [
+                { name: 'FB Page Followers', rate: 0.45 },
+                { name: 'FB Post Likes', rate: 0.21 },
+                { name: 'FB Post Shares', rate: 0.30 }
+            ],
+            youtube: [
+                { name: 'YT Subscribers', rate: 0.45 },
+                { name: 'YT Views', rate: 0.06 },
+                { name: 'YT Likes', rate: 0.12 }
+            ],
+            twitter: [
+                { name: 'X Followers', rate: 0.45 },
+                { name: 'X Retweets', rate: 0.24 },
+                { name: 'X Likes', rate: 0.12 }
+            ],
+            spotify: [
+                { name: 'Spotify Plays', rate: 0.03 },
+                { name: 'Spotify Followers', rate: 0.24 }
+            ]
+        };
+
+        function renderServices(platform, searchTerm = '') {
+            const grid = document.getElementById('servicesGrid');
+            grid.innerHTML = '';
+            
+            const platformData = platformLogos[platform] || { icon: 'fas fa-globe', logo: '', img: '' };
+            const services = servicesData[platform] || [];
+
+            let filtered = services;
+            if (searchTerm) {
+                filtered = services.filter(s => 
+                    s.name.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+            }
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <div class="icon"><i class="fas fa-search"></i></div>
+                        <h3>No Services Found</h3>
+                        <p>Try a different search term or platform</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(s => {
+                const card = document.createElement('div');
+                const isInstant = s.instant || false;
+                card.className = `service-card${isInstant ? ' instant' : ''}`;
+                card.innerHTML = `
+                    ${isInstant ? '<span class="instant-badge">⚡ Instant</span>' : ''}
+                    <div class="icon-wrapper ${platformData.logo}">
+                        ${platformData.img ? `<img src="assets/${platformData.img}" alt="${platform}" onerror="this.style.display='none'">` : `<i class="${platformData.icon}"></i>`}
+                    </div>
+                    <div class="name">${s.name}</div>
+                    <div class="rate">₹${s.rate.toFixed(2)} / unit</div>
+                `;
+                card.addEventListener('click', () => openOrderModal(s.name, s.rate));
+                grid.appendChild(card);
+            });
+        }
+
+        // Platform pills
+        document.querySelectorAll('.platform-pill').forEach(pill => {
+            pill.addEventListener('click', () => {
+                document.querySelectorAll('.platform-pill').forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+                const searchTerm = document.getElementById('service-search').value;
+                renderServices(pill.dataset.platform, searchTerm);
+            });
+        });
+
+        // Search
+        document.getElementById('service-search').addEventListener('input', (e) => {
+            const activePlatform = document.querySelector('.platform-pill.active');
+            if (activePlatform) {
+                renderServices(activePlatform.dataset.platform, e.target.value);
+            }
+        });
+
+        // ===== ORDER MODAL =====
+        function openOrderModal(name, rate) {
+            modalService = { name, rate };
+            document.getElementById('modal-service-name').innerText = name;
+            document.getElementById('modal-link').value = '';
+            document.getElementById('modal-quantity').value = 25;
+            document.getElementById('modal-total-price').innerText = '₹0.00';
+            document.getElementById('modal-error').style.display = 'none';
+
+            document.querySelectorAll('#order-modal .payment-method').forEach(p => p.classList.remove('selected'));
+            document.querySelector('#order-modal .payment-method[data-method="wallet"]').classList.add('selected');
+            modalPayment = 'wallet';
+
+            updateModalPrice();
+            document.getElementById('order-modal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        window.openOrderModal = openOrderModal;
+
+        document.getElementById('close-modal').addEventListener('click', closeOrderModal);
+        document.getElementById('order-modal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeOrderModal();
+        });
+
+        function closeOrderModal() {
+            document.getElementById('order-modal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Quantity controls
+        document.getElementById('qty-minus').addEventListener('click', () => {
+            const input = document.getElementById('modal-quantity');
+            let val = parseInt(input.value) || 25;
+            if (val > 25) {
+                input.value = val - 1;
+                updateModalPrice();
+            }
+        });
+
+        document.getElementById('qty-plus').addEventListener('click', () => {
+            const input = document.getElementById('modal-quantity');
+            let val = parseInt(input.value) || 25;
+            input.value = val + 1;
+            updateModalPrice();
+        });
+
+        document.getElementById('modal-quantity').addEventListener('input', updateModalPrice);
+
+        function updateModalPrice() {
+            const qty = parseInt(document.getElementById('modal-quantity').value) || 0;
+            const total = qty * (modalService?.rate || 0);
+            document.getElementById('modal-total-price').innerText = `₹${total.toFixed(2)}`;
+        }
+
+        // Payment method selection
+        document.querySelectorAll('#order-modal .payment-method').forEach(method => {
+            method.addEventListener('click', () => {
+                document.querySelectorAll('#order-modal .payment-method').forEach(p => p.classList.remove('selected'));
+                method.classList.add('selected');
+                modalPayment = method.dataset.method;
+            });
+        });
+
+        // ===== PLACE ORDER =====
+        document.getElementById('place-order-btn').addEventListener('click', async () => {
+            const link = document.getElementById('modal-link').value.trim();
+            const qty = parseInt(document.getElementById('modal-quantity').value) || 0;
+
+            if (!link) {
+                return showError('modal-error', 'Please enter your profile/video link.');
+            }
+            if (qty < 25) {
+                return showError('modal-error', 'Minimum quantity is 25.');
+            }
+            if (!modalService) {
+                return showError('modal-error', 'No service selected.');
+            }
+
+            const total = qty * modalService.rate;
+
+            if (modalPayment === 'wallet' && (userData.points || 0) < total) {
+                return showError('modal-error', 'Insufficient wallet balance. Please add funds.');
+            }
+
+            // For eSewa/Bank - Save to localStorage and redirect
+            if (modalPayment === 'esewa' || modalPayment === 'bank') {
+                localStorage.setItem('pendingService', modalService.name);
+                localStorage.setItem('pendingQuantity', qty.toString());
+                localStorage.setItem('pendingTotal', total.toString());
+                localStorage.setItem('pendingLink', link);
+                localStorage.setItem('pendingMethod', modalPayment);
+                
+                if (modalPayment === 'esewa') {
+                    window.location.href = 'payment-esewa.html';
+                } else {
+                    window.location.href = 'payment-bank.html';
+                }
+                return;
+            }
+
+            // Wallet payment
+            setLoading(true);
+            try {
+                const orderData = {
+    userId: currentUser.uid,
+    userEmail: currentUser.email,
+    packageName: modalService.name, // was 'service'
+    quantity: qty,
+    price: total, // was 'amount'
+    link: link,
+    method: modalPayment,
+    status: 'pending',
+    createdAt: serverTimestamp()
+};
+
+                await updateDoc(doc(db, "users", currentUser.uid), { points: increment(-total) });
+                await addDoc(collection(db, "orders"), orderData);
+
+                await fetch(DISCORD_WEBHOOK, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        content: `🛒 **NEW ORDER**\nUser: ${currentUser.email}\nService: ${modalService.name}\nQuantity: ${qty}\nTotal: ₹${total}\nMethod: ${modalPayment}\nLink: ${link}`
+                    })
+                });
+
+                closeOrderModal();
+                alert('✅ Order placed successfully!');
+                window.location.href = 'history.html';
+
+            } catch (err) {
+                showError('modal-error', err.message);
+            }
+            setLoading(false);
+        });
+
+        // ===== PRESENCE / ONLINE USERS =====
+        async function updatePresence(userId) {
+            const presenceRef = doc(db, "presence", userId);
+            await setDoc(presenceRef, {
+                uid: userId,
+                lastSeen: serverTimestamp()
+            }, { merge: true });
+        }
+
+        function getOnlineUsers() {
+            const presenceQuery = query(collection(db, "presence"));
+            onSnapshot(presenceQuery, (snap) => {
+                const now = Date.now();
+                const twoMinAgo = now - 120000;
+                let online = 0;
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    if (data.lastSeen) {
+                        const ts = data.lastSeen.seconds * 1000;
+                        if (ts > twoMinAgo) online++;
+                    }
+                });
+                document.getElementById('online-users').innerText = online;
+            });
+        }
+
+        // ===== AUTH CHECK =====
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                // Load wallet balance
+                onSnapshot(doc(db, "users", user.uid), (snap) => {
+                    if (snap.exists()) {
+                        userData = snap.data();
+                        document.getElementById('wallet-balance').innerText = (userData.points || 0).toFixed(2);
+                    }
+                });
+
+                // Render services
+                renderServices('instagram');
+
+                // ===== REAL-TIME TOTAL ORDERS (ALL USERS) =====
+                const allOrdersQuery = query(collection(db, "orders"));
+                onSnapshot(allOrdersQuery, (snap) => {
+                    document.getElementById('live-total-orders').innerText = snap.size;
+                });
+
+                // ===== REVIEWS =====
+                const reviewsQuery = query(collection(db, "reviews"));
+                onSnapshot(reviewsQuery, (snap) => {
+                    let totalStars = 0;
+                    let count = 0;
+                    let html = '';
+                    snap.forEach(doc => {
+                        const data = doc.data();
+                        totalStars += data.rating;
+                        count++;
+                        const stars = '★'.repeat(data.rating) + '☆'.repeat(5 - data.rating);
+                        html += `
+                            <div class="review-item">
+                                <div class="review-header">
+                                    <span class="reviewer">${data.name || 'Anonymous'}</span>
+                                    <span class="review-stars">${stars}</span>
+                                </div>
+                                <div class="review-text">${data.text || ''}</div>
+                            </div>
+                        `;
+                    });
+                    document.getElementById('review-list').innerHTML = html || '<div class="empty-state" style="padding:20px;"><p>No reviews yet. Be the first!</p></div>';
+                    document.getElementById('review-count').innerText = count;
+                    const avg = count > 0 ? (totalStars / count) : 0;
+                    document.getElementById('avg-rating').innerText = avg.toFixed(1);
+                    document.getElementById('avg-number-display').innerText = avg.toFixed(1);
+                    const fullStars = Math.round(avg);
+                    const starStr = '★'.repeat(fullStars) + '☆'.repeat(5 - fullStars);
+                    document.getElementById('avg-stars-display').innerText = starStr;
+                });
+
+                // Presence and online users
+                updatePresence(user.uid);
+                getOnlineUsers();
+
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+
+        // ===== SUBMIT REVIEW =====
+        document.getElementById('submit-review-btn').addEventListener('click', async () => {
+            const name = document.getElementById('reviewer-name').value.trim() || 'Anonymous';
+            const rating = parseInt(document.getElementById('review-rating').value);
+            const text = document.getElementById('review-text').value.trim();
+            if (!text) {
+                alert('Please write a review.');
+                return;
+            }
+            try {
+                await addDoc(collection(db, "reviews"), {
+                    name: name,
+                    rating: rating,
+                    text: text,
+                    userId: currentUser?.uid || 'guest',
+                    createdAt: serverTimestamp()
+                });
+                document.getElementById('reviewer-name').value = '';
+                document.getElementById('review-text').value = '';
+                alert('✅ Review submitted!');
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        });
+    </script>
+</body>
+</html>
